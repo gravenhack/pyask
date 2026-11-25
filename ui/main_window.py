@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 import mysql.connector
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QSettings, pyqtSignal
 from PyQt5.QtGui import QFontDatabase
 from PyQt5.QtWidgets import (
     QApplication,
@@ -53,7 +53,7 @@ from models.report import Report
 from models.tag import Tag
 from models.user import ROLES
 from models.user_summary import UserSummary
-from reporting.csv_exporter import export_csv
+from reporting.csv_exporter import export_csv, export_reports_zip
 
 APP_BACKGROUND_PATH = Path(__file__).with_name("background.png")
 APP_STYLESHEET = (
@@ -61,6 +61,17 @@ APP_STYLESHEET = (
     .read_text(encoding="utf-8")
     .replace("APP_BACKGROUND_URL", APP_BACKGROUND_PATH.as_posix())
 )
+LIGHT_THEME_STYLESHEET = (
+    APP_STYLESHEET
+    + "\n"
+    + Path(__file__).with_name("styles_light.qss").read_text(
+        encoding="utf-8"
+    )
+)
+APP_THEME_STYLESHEETS = {
+    "dark": APP_STYLESHEET,
+    "light": LIGHT_THEME_STYLESHEET,
+}
 APP_FONT_FILES = (
     "AgravePro-Regular.ttf",
     "AgravePro-SemiBold.ttf",
@@ -259,8 +270,11 @@ class ProfileDialog(QDialog):
     def __init__(self, user, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Mon profil")
-        self.setMinimumWidth(440)
+        self.setMinimumWidth(480)
 
+        self.user = user
+        self.username_input = QLineEdit(user.username)
+        self.username_input.setMaxLength(50)
         self.full_name_input = QLineEdit(user.full_name or "")
         self.full_name_input.setMaxLength(100)
         self.full_name_input.setPlaceholderText("Ton nom complet")
@@ -269,8 +283,31 @@ class ProfileDialog(QDialog):
         self.bio_input.setMaximumHeight(120)
 
         form = QFormLayout()
+        form.addRow("Nom d'utilisateur", self.username_input)
         form.addRow("Nom complet", self.full_name_input)
         form.addRow("Bio (255 caractères maximum)", self.bio_input)
+
+        self.current_password_input = QLineEdit()
+        self.current_password_input.setEchoMode(QLineEdit.Password)
+        self.current_password_input.setPlaceholderText(
+            "Mot de passe actuel"
+        )
+        self.new_password_input = QLineEdit()
+        self.new_password_input.setEchoMode(QLineEdit.Password)
+        self.new_password_input.setPlaceholderText(
+            "6 caractères minimum"
+        )
+        self.confirm_password_input = QLineEdit()
+        self.confirm_password_input.setEchoMode(QLineEdit.Password)
+        self.confirm_password_input.setPlaceholderText(
+            "Confirmer le nouveau mot de passe"
+        )
+        password_form = QFormLayout()
+        password_form.addRow("Mot de passe actuel", self.current_password_input)
+        password_form.addRow("Nouveau mot de passe", self.new_password_input)
+        password_form.addRow("Confirmation", self.confirm_password_input)
+        password_group = QGroupBox("Changer le mot de passe (facultatif)")
+        password_group.setLayout(password_form)
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
@@ -282,9 +319,24 @@ class ProfileDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
+        layout.addWidget(password_group)
         layout.addWidget(self.buttons)
 
     def _accept_if_valid(self):
+        if not self.username_input.text().strip():
+            QMessageBox.warning(
+                self,
+                "Profil invalide",
+                "Le nom d'utilisateur est obligatoire.",
+            )
+            return
+        if len(self.full_name_input.text().strip()) > 100:
+            QMessageBox.warning(
+                self,
+                "Profil invalide",
+                "Le nom complet ne peut pas dépasser 100 caractères.",
+            )
+            return
         if len(self.bio_input.toPlainText().strip()) > 255:
             QMessageBox.warning(
                 self,
@@ -292,6 +344,38 @@ class ProfileDialog(QDialog):
                 "La bio ne peut pas dépasser 255 caractères.",
             )
             return
+        current_password = self.current_password_input.text()
+        new_password = self.new_password_input.text()
+        confirmed_password = self.confirm_password_input.text()
+        if current_password or new_password or confirmed_password:
+            if not current_password or not new_password or not confirmed_password:
+                QMessageBox.warning(
+                    self,
+                    "Mot de passe invalide",
+                    "Remplis les trois champs pour changer le mot de passe.",
+                )
+                return
+            if not self.user.check_password(current_password):
+                QMessageBox.warning(
+                    self,
+                    "Mot de passe invalide",
+                    "Le mot de passe actuel est incorrect.",
+                )
+                return
+            if new_password != confirmed_password:
+                QMessageBox.warning(
+                    self,
+                    "Mot de passe invalide",
+                    "Les deux nouveaux mots de passe ne correspondent pas.",
+                )
+                return
+            if len(new_password) < 6:
+                QMessageBox.warning(
+                    self,
+                    "Mot de passe invalide",
+                    "Le nouveau mot de passe doit contenir au moins 6 caractères.",
+                )
+                return
         self.accept()
 
 
@@ -317,7 +401,7 @@ class ModerationDialog(QDialog):
         self.report_details.setPlainText("Sélectionne un signalement.")
         self.status_label = QLabel()
 
-        self.review_button = QPushButton("Marquer comme traité")
+        self.review_button = QPushButton("Traiter et masquer")
         self.review_button.setEnabled(False)
         self.review_button.clicked.connect(
             lambda: self._review_selected("reviewed")
@@ -603,9 +687,17 @@ class ReportsDialog(QDialog):
         title = QLabel("Générer des rapports")
         title.setObjectName("questionTitle")
         description = QLabel(
-            "Choisis le type de données à exporter au format CSV."
+            "Choisis une période, puis exporte un rapport CSV ou les deux "
+            "rapports dans une archive ZIP."
         )
         description.setWordWrap(True)
+        period_label = QLabel("Période")
+        self.period_filter = QComboBox()
+        self.period_filter.setObjectName("reportPeriodFilter")
+        self.period_filter.addItem("Toute période", None)
+        self.period_filter.addItem("7 derniers jours", 7)
+        self.period_filter.addItem("30 derniers jours", 30)
+        self.period_filter.addItem("90 derniers jours", 90)
 
         self.questions_export_button = QPushButton("Exporter les questions (CSV)")
         self.questions_export_button.setObjectName("questionsExportButton")
@@ -629,6 +721,12 @@ class ReportsDialog(QDialog):
         )
         answers_layout.addWidget(self.answers_export_button)
 
+        self.bundle_export_button = QPushButton(
+            "Exporter les deux rapports (ZIP)"
+        )
+        self.bundle_export_button.setObjectName("bundleExportButton")
+        self.bundle_export_button.clicked.connect(self._export_reports_zip)
+
         close_button = QPushButton("Fermer")
         close_button.clicked.connect(self.accept)
 
@@ -637,8 +735,11 @@ class ReportsDialog(QDialog):
         layout.setSpacing(12)
         layout.addWidget(title)
         layout.addWidget(description)
+        layout.addWidget(period_label)
+        layout.addWidget(self.period_filter)
         layout.addWidget(questions_group)
         layout.addWidget(answers_group)
+        layout.addWidget(self.bundle_export_button)
         layout.addWidget(close_button)
 
     def _export_question_report(self):
@@ -668,7 +769,11 @@ class ReportsDialog(QDialog):
         if not file_path:
             return
         try:
-            export_csv(load_rows(self.admin), file_path, fieldnames)
+            export_csv(
+                load_rows(self.admin, self.period_filter.currentData()),
+                file_path,
+                fieldnames,
+            )
         except PermissionError as error:
             QMessageBox.warning(self, "Accès refusé", str(error))
             return
@@ -682,6 +787,53 @@ class ReportsDialog(QDialog):
             QMessageBox.critical(self, "Export impossible", str(error))
             return
         QMessageBox.information(self, "Export CSV", "Le rapport a été exporté.")
+
+    def _export_reports_zip(self):
+        default_path = (
+            Path(__file__).resolve().parent.parent / "exports" / "reports.zip"
+        )
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Enregistrer les deux rapports",
+            str(default_path),
+            "Archives ZIP (*.zip)",
+        )
+        if not file_path:
+            return
+        period_days = self.period_filter.currentData()
+        try:
+            question_rows = self.analytics_repository.question_report(
+                self.admin,
+                period_days,
+            )
+            answer_rows = self.analytics_repository.answer_report(
+                self.admin,
+                period_days,
+            )
+            export_reports_zip(
+                question_rows,
+                answer_rows,
+                file_path,
+                QUESTION_REPORT_FIELDS,
+                ANSWER_REPORT_FIELDS,
+            )
+        except PermissionError as error:
+            QMessageBox.warning(self, "Accès refusé", str(error))
+            return
+        except (
+            mysql.connector.Error,
+            OSError,
+            RuntimeError,
+            ValueError,
+            csv.Error,
+        ) as error:
+            QMessageBox.critical(self, "Export impossible", str(error))
+            return
+        QMessageBox.information(
+            self,
+            "Export ZIP",
+            "Les deux rapports ont été exportés.",
+        )
 
 
 class CategoryStory(QWidget):
@@ -797,12 +949,19 @@ class ForumWindow(QMainWindow):
         self.report_repository = ReportRepository()
         self.user_repository = UserRepository()
         self.analytics_repository = AnalyticsRepository()
+        self.theme_settings = QSettings("PYASK", "PYASK")
+        self.current_theme = self.theme_settings.value("theme", "dark")
+        if self.current_theme not in APP_THEME_STYLESHEETS:
+            self.current_theme = "dark"
         self.questions_by_id = {}
         self.question_cards_by_id = {}
         self.answers_by_id = {}
         self.comments_by_id = {}
         self.current_question = None
         self.category_nav_buttons = {}
+        self.question_page = 1
+        self.question_page_size = 20
+        self.question_total = 0
 
         self.setWindowTitle(f"PYASK - {user.username}")
         self.resize(1360, 860)
@@ -850,12 +1009,18 @@ class ForumWindow(QMainWindow):
         self.question_comment_list.currentItemChanged.connect(
             self._clear_answer_selection
         )
+        self.question_comment_list.currentItemChanged.connect(
+            self._update_discussion_action_state
+        )
         self.answer_tree = QTreeWidget()
         self.answer_tree.setHeaderHidden(True)
         self.answer_tree.setWordWrap(True)
         self.answer_tree.setMinimumHeight(180)
         self.answer_tree.currentItemChanged.connect(
             self._clear_question_comment_selection
+        )
+        self.answer_tree.currentItemChanged.connect(
+            self._update_discussion_action_state
         )
 
         self.question_title = QLabel("Choisis une question")
@@ -894,17 +1059,27 @@ class ForumWindow(QMainWindow):
         clear_filters_button.clicked.connect(self._clear_filters)
         refresh_button = QPushButton("Actualiser")
         refresh_button.clicked.connect(self._refresh_questions)
-        answer_button = QPushButton("Répondre")
-        answer_button.setObjectName("primaryButton")
-        answer_button.clicked.connect(self._create_answer)
-        upvote_button = QPushButton("Voter +1")
-        upvote_button.clicked.connect(lambda: self._vote(1))
-        downvote_button = QPushButton("Voter -1")
-        downvote_button.clicked.connect(lambda: self._vote(-1))
-        comment_button = QPushButton("Commenter")
-        comment_button.clicked.connect(self._create_comment)
-        report_button = QPushButton("Signaler")
-        report_button.clicked.connect(self._create_report)
+        self.previous_page_button = QPushButton("Précédent")
+        self.previous_page_button.setObjectName("paginationButton")
+        self.previous_page_button.setEnabled(False)
+        self.previous_page_button.clicked.connect(self._previous_page)
+        self.page_label = QLabel("Page 1 / 1")
+        self.page_label.setObjectName("pageLabel")
+        self.next_page_button = QPushButton("Suivant")
+        self.next_page_button.setObjectName("paginationButton")
+        self.next_page_button.setEnabled(False)
+        self.next_page_button.clicked.connect(self._next_page)
+        self.answer_button = QPushButton("Répondre")
+        self.answer_button.setObjectName("primaryButton")
+        self.answer_button.clicked.connect(self._create_answer)
+        self.upvote_button = QPushButton("Voter +1")
+        self.upvote_button.clicked.connect(lambda: self._vote(1))
+        self.downvote_button = QPushButton("Voter -1")
+        self.downvote_button.clicked.connect(lambda: self._vote(-1))
+        self.comment_button = QPushButton("Commenter")
+        self.comment_button.clicked.connect(self._create_comment)
+        self.report_button = QPushButton("Signaler")
+        self.report_button.clicked.connect(self._create_report)
 
         header = QFrame()
         header.setObjectName("forumHeader")
@@ -919,6 +1094,11 @@ class ForumWindow(QMainWindow):
         logout_button = QPushButton("Déconnexion")
         logout_button.setObjectName("logoutButton")
         logout_button.clicked.connect(self._logout)
+        self.theme_button = QPushButton()
+        self.theme_button.setObjectName("themeButton")
+        self.theme_button.clicked.connect(self._toggle_theme)
+        self._sync_theme_button()
+        header_layout.addWidget(self.theme_button)
         header_layout.addWidget(logout_button)
 
         sidebar_content = QWidget()
@@ -934,20 +1114,20 @@ class ForumWindow(QMainWindow):
         profile_card_layout.setSpacing(16)
         profile_identity = QHBoxLayout()
         profile_identity.setSpacing(12)
-        profile_avatar = QLabel(user.username[:1].upper())
-        profile_avatar.setObjectName("profileAvatar")
-        profile_avatar.setAlignment(Qt.AlignCenter)
-        profile_avatar.setFixedSize(44, 44)
+        self.profile_avatar = QLabel(user.username[:1].upper())
+        self.profile_avatar.setObjectName("profileAvatar")
+        self.profile_avatar.setAlignment(Qt.AlignCenter)
+        self.profile_avatar.setFixedSize(44, 44)
         profile_text = QVBoxLayout()
         profile_text.setSpacing(3)
-        profile_name = QLabel(user.full_name or user.username)
-        profile_name.setObjectName("feedAuthor")
-        profile_name.setWordWrap(True)
-        profile_handle = QLabel(f"@{user.username}")
-        profile_handle.setObjectName("profileRole")
-        profile_text.addWidget(profile_name)
-        profile_text.addWidget(profile_handle)
-        profile_identity.addWidget(profile_avatar)
+        self.profile_name_label = QLabel(user.full_name or user.username)
+        self.profile_name_label.setObjectName("feedAuthor")
+        self.profile_name_label.setWordWrap(True)
+        self.profile_handle_label = QLabel(f"@{user.username}")
+        self.profile_handle_label.setObjectName("profileRole")
+        profile_text.addWidget(self.profile_name_label)
+        profile_text.addWidget(self.profile_handle_label)
+        profile_identity.addWidget(self.profile_avatar)
         profile_identity.addLayout(profile_text, 1)
         profile_button = QPushButton("Profil")
         profile_button.setObjectName("profileButton")
@@ -1020,9 +1200,9 @@ class ForumWindow(QMainWindow):
         sort_label.setObjectName("filterFieldLabel")
         tools_layout.addWidget(sort_label)
         tools_layout.addWidget(self.sort_filter)
-        self.search_input.returnPressed.connect(self._refresh_questions)
-        self.tag_filter_input.returnPressed.connect(self._refresh_questions)
-        self.sort_filter.currentIndexChanged.connect(self._refresh_questions)
+        self.search_input.returnPressed.connect(self._filters_changed)
+        self.tag_filter_input.returnPressed.connect(self._filters_changed)
+        self.sort_filter.currentIndexChanged.connect(self._filters_changed)
         self.category_filter.currentIndexChanged.connect(
             self._category_filter_changed
         )
@@ -1079,6 +1259,13 @@ class ForumWindow(QMainWindow):
         self.question_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         feed_layout.addWidget(self.question_list, 1)
         feed_layout.addWidget(self.question_empty_label)
+        pagination_layout = QHBoxLayout()
+        pagination_layout.addWidget(self.previous_page_button)
+        pagination_layout.addStretch(1)
+        pagination_layout.addWidget(self.page_label)
+        pagination_layout.addStretch(1)
+        pagination_layout.addWidget(self.next_page_button)
+        feed_layout.addLayout(pagination_layout)
 
         self.feed_scroll = QScrollArea()
         self.feed_scroll.setObjectName("feedScroll")
@@ -1168,14 +1355,14 @@ class ForumWindow(QMainWindow):
 
         answer_entry_layout = QHBoxLayout()
         answer_entry_layout.addWidget(self.answer_input, 1)
-        answer_entry_layout.addWidget(answer_button)
+        answer_entry_layout.addWidget(self.answer_button)
         discussion_layout.addLayout(answer_entry_layout)
 
         discussion_actions = QHBoxLayout()
-        discussion_actions.addWidget(upvote_button)
-        discussion_actions.addWidget(downvote_button)
-        discussion_actions.addWidget(comment_button)
-        discussion_actions.addWidget(report_button)
+        discussion_actions.addWidget(self.upvote_button)
+        discussion_actions.addWidget(self.downvote_button)
+        discussion_actions.addWidget(self.comment_button)
+        discussion_actions.addWidget(self.report_button)
         discussion_layout.addLayout(discussion_actions)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -1223,22 +1410,59 @@ class ForumWindow(QMainWindow):
     def _open_moderation(self):
         dialog = ModerationDialog(self.user, self.report_repository, self)
         dialog.exec_()
+        self._refresh_questions()
 
     def _open_profile(self):
         dialog = ProfileDialog(self.user, self)
         if dialog.exec_() != QDialog.Accepted:
             return
         self._save_profile(
+            dialog.username_input.text(),
             dialog.full_name_input.text(),
             dialog.bio_input.toPlainText(),
+            dialog.current_password_input.text(),
+            dialog.new_password_input.text(),
         )
 
     def _logout(self):
         self.logged_out.emit()
 
-    def _save_profile(self, full_name, bio):
+    def _sync_theme_button(self):
+        next_theme = "clair" if self.current_theme == "dark" else "sombre"
+        self.theme_button.setText(f"Mode {next_theme}")
+        self.theme_button.setToolTip(f"Passer au mode {next_theme}")
+
+    def _toggle_theme(self):
+        self.current_theme = (
+            "light" if self.current_theme == "dark" else "dark"
+        )
+        QApplication.instance().setStyleSheet(
+            APP_THEME_STYLESHEETS[self.current_theme]
+        )
+        self.theme_settings.setValue("theme", self.current_theme)
+        self._sync_theme_button()
+
+    def _save_profile(
+        self,
+        username,
+        full_name,
+        bio,
+        current_password=None,
+        new_password=None,
+    ):
+        username = username.strip()
         full_name = full_name.strip() or None
         bio = bio.strip() or None
+        if not username:
+            QMessageBox.warning(
+                self, "Profil invalide", "Le nom d'utilisateur est obligatoire."
+            )
+            return
+        if len(username) > 50:
+            QMessageBox.warning(
+                self, "Profil invalide", "Le nom d'utilisateur est trop long."
+            )
+            return
         if full_name is not None and len(full_name) > 100:
             QMessageBox.warning(
                 self, "Profil invalide", "Le nom complet est trop long."
@@ -1253,22 +1477,34 @@ class ForumWindow(QMainWindow):
             return
 
         try:
-            self.user_repository.update_profile(
+            new_password_hash = self.user_repository.update_profile(
                 self.user.id,
+                username=username,
                 full_name=full_name,
                 bio=bio,
+                current_password=current_password or None,
+                new_password=new_password or None,
             )
         except (
             mysql.connector.Error,
             LookupError,
+            PermissionError,
             RuntimeError,
             ValueError,
         ) as error:
             QMessageBox.warning(self, "Profil non enregistré", str(error))
             return
 
+        self.user.username = username
         self.user.full_name = full_name
         self.user.bio = bio
+        if new_password_hash is not None:
+            self.user._set_password_hash(new_password_hash)
+        self.setWindowTitle(f"PYASK - {self.user.username}")
+        self.profile_avatar.setText(self.user.username[:1].upper())
+        self.profile_name_label.setText(self.user.full_name or self.user.username)
+        self.profile_handle_label.setText(f"@{self.user.username}")
+        self._refresh_questions(reset_page=True)
         QMessageBox.information(self, "Mon profil", "Profil mis à jour.")
 
     def _open_administration(self):
@@ -1334,7 +1570,26 @@ class ForumWindow(QMainWindow):
 
     def _category_filter_changed(self, _index):
         self._update_category_nav_selection()
+        self._filters_changed()
+
+    def _filters_changed(self, *_args):
+        self.question_page = 1
         self._refresh_questions()
+
+    def _previous_page(self):
+        if self.question_page > 1:
+            self.question_page -= 1
+            self._refresh_questions()
+
+    def _next_page(self):
+        page_count = max(
+            1,
+            (self.question_total + self.question_page_size - 1)
+            // self.question_page_size,
+        )
+        if self.question_page < page_count:
+            self.question_page += 1
+            self._refresh_questions()
 
     def _select_question(self, question_id):
         for index in range(self.question_list.count()):
@@ -1351,6 +1606,24 @@ class ForumWindow(QMainWindow):
         self._open_question_discussion(item.data(Qt.UserRole))
 
     def _open_question_discussion(self, question_id):
+        if question_id not in self.questions_by_id:
+            try:
+                offset = self.question_repository.question_offset(
+                    question_id,
+                    **self._active_question_filters(),
+                    sort=self.sort_filter.currentData(),
+                )
+            except (mysql.connector.Error, RuntimeError, ValueError) as error:
+                QMessageBox.critical(
+                    self,
+                    "Question indisponible",
+                    str(error),
+                )
+                return
+            self.question_page = (
+                offset // self.question_page_size
+            ) + 1
+            self._refresh_questions()
         self._select_question(question_id)
         if (
             self.current_question is not None
@@ -1360,7 +1633,7 @@ class ForumWindow(QMainWindow):
 
     def _select_trending_tag(self, item):
         self.tag_filter_input.setText(item.data(Qt.UserRole))
-        self._refresh_questions()
+        self._filters_changed()
 
     def _set_selected_feed_card(self, question_id):
         for card_id, card in self.question_cards_by_id.items():
@@ -1371,16 +1644,42 @@ class ForumWindow(QMainWindow):
             card.style().unpolish(card)
             card.style().polish(card)
 
-    def _refresh_questions(self):
+    def _active_question_filters(self):
+        return {
+            "search_text": self.search_input.text(),
+            "tag_name": self.tag_filter_input.text(),
+            "category_id": self.category_filter.currentData(),
+        }
+
+    def _refresh_questions(self, reset_page=False):
+        if reset_page:
+            self.question_page = 1
         selected_id = (
             self.current_question.id if self.current_question is not None else None
         )
+        filters = self._active_question_filters()
         try:
+            self.question_total = self.question_repository.count_questions(
+                **filters
+            )
+            page_count = max(
+                1,
+                (self.question_total + self.question_page_size - 1)
+                // self.question_page_size,
+            )
+            self.question_page = min(self.question_page, page_count)
             questions = self.question_repository.list_questions(
-                search_text=self.search_input.text(),
-                tag_name=self.tag_filter_input.text(),
-                category_id=self.category_filter.currentData(),
+                **filters,
                 sort=self.sort_filter.currentData(),
+                page_size=self.question_page_size,
+                offset=(self.question_page - 1) * self.question_page_size,
+                viewer=self.user,
+            )
+            popular = self.question_repository.list_popular_questions(
+                **filters, viewer=self.user
+            )
+            trending_tags = self.question_repository.list_trending_tags(
+                **filters,
             )
         except (mysql.connector.Error, RuntimeError, ValueError) as error:
             QMessageBox.critical(self, "Chargement impossible", str(error))
@@ -1407,20 +1706,13 @@ class ForumWindow(QMainWindow):
                     self._open_question_discussion(question_id)
             )
 
-        popular = sorted(
-            questions,
-            key=lambda question: (
-                question.answer_count,
-                question.vote_score,
-            ),
-            reverse=True,
-        )[:4]
         for question in popular:
             popular_item = QListWidgetItem(
-                f"{question.title}\n"
-                f"{question.answer_count} réponse(s) · score {question.vote_score}"
+                f"{question['title']}\n"
+                f"{question['answer_count']} réponse(s) · "
+                f"score {question['vote_score']}"
             )
-            popular_item.setData(Qt.UserRole, question.id)
+            popular_item.setData(Qt.UserRole, question["question_id"])
             self.popular_questions.addItem(popular_item)
         if not popular:
             empty_item = QListWidgetItem("Aucune question à afficher.")
@@ -1428,18 +1720,11 @@ class ForumWindow(QMainWindow):
             self.popular_questions.addItem(empty_item)
 
         self.trending_tags.clear()
-        tag_counts = {}
-        for question in questions:
-            for tag in question.tags:
-                tag_counts[tag.name] = tag_counts.get(tag.name, 0) + 1
-        trending_tags = sorted(
-            tag_counts.items(), key=lambda item: (-item[1], item[0])
-        )[:6]
-        for tag_name, question_count in trending_tags:
+        for tag in trending_tags:
             tag_item = QListWidgetItem(
-                f"#{tag_name}  ·  {question_count} question(s)"
+                f"#{tag['tag_name']}  ·  {tag['question_count']} question(s)"
             )
-            tag_item.setData(Qt.UserRole, tag_name)
+            tag_item.setData(Qt.UserRole, tag["tag_name"])
             self.trending_tags.addItem(tag_item)
         if not trending_tags:
             empty_item = QListWidgetItem("Aucun tag à afficher.")
@@ -1450,8 +1735,13 @@ class ForumWindow(QMainWindow):
         self.question_list.setVisible(has_questions)
         self.question_empty_label.setVisible(not has_questions)
         self.feed_count.setText(
-            f"{len(questions)} question(s)" if has_questions else "0 question"
+            f"{self.question_total} question(s)"
+            if self.question_total
+            else "0 question"
         )
+        self.page_label.setText(f"Page {self.question_page} / {page_count}")
+        self.previous_page_button.setEnabled(self.question_page > 1)
+        self.next_page_button.setEnabled(self.question_page < page_count)
 
         if selected_id is not None:
             previous_item = next(
@@ -1483,7 +1773,8 @@ class ForumWindow(QMainWindow):
         self.sort_filter.setCurrentIndex(0)
         self.sort_filter.blockSignals(False)
         self._update_category_nav_selection()
-        self._refresh_questions()
+        self.question_page = 1
+        self._refresh_questions(reset_page=True)
 
     def _show_question(self, item, _previous):
         self.answers_by_id = {}
@@ -1507,6 +1798,7 @@ class ForumWindow(QMainWindow):
             )
             self.answers_empty.show()
             self.answer_tree.hide()
+            self._update_discussion_action_state()
             return
 
         question_id = item.data(Qt.UserRole)
@@ -1526,8 +1818,12 @@ class ForumWindow(QMainWindow):
             "Tags : " + ", ".join(tag.name for tag in question.tags)
         )
         try:
-            answers = self.answer_repository.list_for_question(question.id)
-            comments = self.comment_repository.list_for_question(question.id)
+            answers = self.answer_repository.list_for_question(
+                question.id, viewer=self.user
+            )
+            comments = self.comment_repository.list_for_question(
+                question.id, viewer=self.user
+            )
         except (mysql.connector.Error, RuntimeError, ValueError) as error:
             QMessageBox.critical(self, "Chargement impossible", str(error))
             return
@@ -1577,6 +1873,7 @@ class ForumWindow(QMainWindow):
                     )
                     comment_item.setData(0, Qt.UserRole, ("comment", comment.id))
         self.answer_tree.expandAll()
+        self._update_discussion_action_state()
 
     def _selected_answer(self):
         item = self.answer_tree.currentItem()
@@ -1607,6 +1904,31 @@ class ForumWindow(QMainWindow):
     def _clear_question_comment_selection(self, item, _previous):
         if item is not None:
             self.question_comment_list.setCurrentItem(None)
+
+    def _update_discussion_action_state(self, *_):
+        question = self.current_question
+        question_visible = question is not None and not question.is_hidden
+        answer = self._selected_answer()
+        comment = self._selected_comment()
+        target_hidden = (
+            comment.is_hidden
+            if comment is not None
+            else answer.is_hidden
+            if answer is not None
+            else question is None or question.is_hidden
+        )
+        self.answer_input.setEnabled(question_visible)
+        self.answer_button.setEnabled(question_visible)
+        self.upvote_button.setEnabled(
+            question_visible and answer is not None and not answer.is_hidden
+        )
+        self.downvote_button.setEnabled(
+            question_visible and answer is not None and not answer.is_hidden
+        )
+        self.comment_button.setEnabled(question_visible and not target_hidden)
+        self.report_button.setEnabled(
+            question is not None and not target_hidden
+        )
 
     def _comment_target(self):
         comment = self._selected_comment()
@@ -1645,7 +1967,7 @@ class ForumWindow(QMainWindow):
         except (mysql.connector.Error, RuntimeError, ValueError) as error:
             QMessageBox.warning(self, "Question non enregistrée", str(error))
             return
-        self._refresh_questions()
+        self._refresh_questions(reset_page=True)
 
     def _create_answer(self):
         if self.current_question is None:
@@ -1741,7 +2063,11 @@ class ForumWindow(QMainWindow):
 def main():
     application = QApplication(sys.argv)
     _load_application_fonts()
-    application.setStyleSheet(APP_STYLESHEET)
+    theme_settings = QSettings("PYASK", "PYASK")
+    theme = theme_settings.value("theme", "dark")
+    if theme not in APP_THEME_STYLESHEETS:
+        theme = "dark"
+    application.setStyleSheet(APP_THEME_STYLESHEETS[theme])
     login_window = LoginWindow()
     forum_windows = []
 

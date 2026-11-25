@@ -72,6 +72,54 @@ class AnalyticsRepositoryTests(unittest.TestCase):
                 report_cursor.close.assert_called_once()
                 connection.close.assert_called_once()
 
+    def test_selected_period_is_applied_to_question_and_answer_dates(self):
+        repository = AnalyticsRepository()
+        admin = self.make_user("admin")
+
+        for report_method, expected_column in (
+            (repository.question_report, "created_at"),
+            (repository.answer_report, "a.created_at"),
+        ):
+            with self.subTest(report=report_method.__name__):
+                connection = Mock()
+                permission_cursor = Mock()
+                permission_cursor.fetchone.return_value = ("admin",)
+                report_cursor = Mock()
+                report_cursor.fetchall.return_value = []
+                connection.cursor.side_effect = [
+                    permission_cursor,
+                    report_cursor,
+                ]
+
+                with patch(
+                    "database.analytics_repository.get_connection",
+                    return_value=connection,
+                ):
+                    report_method(admin, period_days=30)
+
+                query = report_cursor.execute.call_args.args[0]
+                self.assertIn(
+                    f"{expected_column} >= DATE_SUB(CURRENT_TIMESTAMP, "
+                    "INTERVAL 30 DAY)",
+                    query,
+                )
+
+    def test_reports_reject_unsupported_periods(self):
+        repository = AnalyticsRepository()
+        admin = self.make_user("admin")
+
+        for report_method in (
+            repository.question_report,
+            repository.answer_report,
+        ):
+            with self.subTest(report=report_method.__name__):
+                with patch(
+                    "database.analytics_repository.get_connection"
+                ) as get_connection:
+                    with self.assertRaisesRegex(ValueError, "7, 30, or 90"):
+                        report_method(admin, period_days=14)
+                get_connection.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

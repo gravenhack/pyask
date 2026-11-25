@@ -16,6 +16,12 @@ class VoteRepository:
         cursor = connection.cursor()
         try:
             cursor.execute(
+                "SELECT 1 FROM hidden_content WHERE answer_id = %s",
+                (answer.id,),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("A hidden answer cannot receive votes.")
+            cursor.execute(
                 """
                 INSERT INTO answer_votes (user_id, answer_id, vote_value)
                 VALUES (%s, %s, %s)

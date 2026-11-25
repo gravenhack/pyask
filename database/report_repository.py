@@ -130,10 +130,43 @@ class ReportRepository:
         cursor = connection.cursor()
         try:
             require_moderator(cursor, moderator)
-            cursor.execute("SELECT 1 FROM reports WHERE id = %s", (report.id,))
-            if cursor.fetchone() is None:
+            cursor.execute(
+                """
+                SELECT question_id, answer_id, comment_id, reason
+                FROM reports
+                WHERE id = %s
+                """,
+                (report.id,),
+            )
+            target = cursor.fetchone()
+            if target is None:
                 raise LookupError(f"Report {report.id} was not found.")
 
+            if status == "reviewed":
+                question_id, answer_id, comment_id, reason = target
+                if sum(value is not None for value in (
+                    question_id, answer_id, comment_id
+                )) != 1:
+                    raise ValueError(
+                        "A report must target exactly one content item."
+                    )
+                cursor.execute(
+                    """
+                    INSERT IGNORE INTO hidden_content (
+                        question_id, answer_id, comment_id,
+                        report_id, moderator_id, reason
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        question_id,
+                        answer_id,
+                        comment_id,
+                        report.id,
+                        moderator.id,
+                        reason,
+                    ),
+                )
             cursor.execute(
                 """
                 UPDATE reports
@@ -143,7 +176,7 @@ class ReportRepository:
                 (status, moderator.id, reviewed_at, report.id),
             )
             connection.commit()
-        except mysql.connector.Error:
+        except (mysql.connector.Error, LookupError, ValueError):
             connection.rollback()
             raise
         finally:

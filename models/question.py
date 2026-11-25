@@ -6,7 +6,7 @@ MAX_TAGS = 3
 class Question(Post):
     def __init__(self, author, title, body, category, tags=None,
                  id=None, created_at=None, updated_at=None,
-                 answer_count=0, vote_score=0):
+                 answer_count=0, vote_score=0, is_hidden=False):
         if category is None:
             raise ValueError("Une question doit avoir une catégorie.")
         super().__init__(author, body, id, created_at)
@@ -17,6 +17,7 @@ class Question(Post):
         self.updated_at = updated_at
         self.answer_count = answer_count
         self.vote_score = vote_score
+        self.is_hidden = is_hidden
         self.__tags = []
         for tag in (tags or []):
             self.add_tag(tag)

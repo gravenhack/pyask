@@ -1,0 +1,242 @@
+QWidget {
+    color: #27272a;
+}
+
+QMainWindow, QDialog {
+    background-color: #f8fafc;
+}
+
+QGroupBox {
+    background-color: #ffffff;
+    border-color: #e4e4e7;
+}
+
+QGroupBox::title {
+    background-color: #ffffff;
+    color: #71717a;
+}
+
+QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTreeWidget {
+    color: #27272a;
+    background-color: #ffffff;
+    border-color: #d4d4d8;
+    selection-background-color: #dbeafe;
+    selection-color: #18181b;
+}
+
+QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {
+    border-color: #64748b;
+}
+
+QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled {
+    color: #a1a1aa;
+    background-color: #f4f4f5;
+}
+
+QPlainTextEdit#questionContent {
+    background-color: #ffffff;
+}
+
+QPushButton {
+    color: #27272a;
+    background-color: #f4f4f5;
+    border-color: #d4d4d8;
+}
+
+QPushButton:hover {
+    background-color: #e4e4e7;
+    border-color: #a1a1aa;
+}
+
+QPushButton:pressed {
+    background-color: #d4d4d8;
+}
+
+QPushButton:disabled {
+    color: #a1a1aa;
+    background-color: #fafafa;
+    border-color: #e4e4e7;
+}
+
+QPushButton#primaryButton, QPushButton#loginPrimaryButton {
+    color: #ffffff;
+    background-color: #18181b;
+    border-color: #18181b;
+}
+
+QPushButton#primaryButton:hover, QPushButton#loginPrimaryButton:hover {
+    background-color: #27272a;
+    border-color: #27272a;
+}
+
+QPushButton#primaryButton:disabled, QPushButton#loginPrimaryButton:disabled {
+    color: #a1a1aa;
+    background-color: #e4e4e7;
+    border-color: #e4e4e7;
+}
+
+QLabel#questionTitle, QLabel#forumLogo, QLabel#brandTitle,
+QLabel#loginTitle, QLabel#feedCardTitle {
+    color: #18181b;
+}
+
+QLabel#questionMeta, QLabel#emptyState, QLabel#feedCount,
+QLabel#sidebarSectionTitle, QLabel#filterFieldLabel,
+QLabel#storyLabel, QLabel#profileRole, QLabel#feedMeta,
+QLabel#feedStats, QLabel#brandSubtitle, QLabel#loginHint {
+    color: #71717a;
+}
+
+QLabel#questionTags {
+    color: #52525b;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected {
+    color: #18181b;
+    background-color: #e4e4e7;
+}
+
+QListWidget#questionFeed::item:selected {
+    color: #18181b;
+}
+
+QSplitter::handle {
+    background-color: #e4e4e7;
+}
+
+QScrollBar:vertical, QScrollBar:horizontal {
+    background-color: #f8fafc;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background-color: #c4c4ca;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background-color: #a1a1aa;
+}
+
+QComboBox QAbstractItemView {
+    color: #27272a;
+    background-color: #ffffff;
+    border-color: #d4d4d8;
+    selection-background-color: #e4e4e7;
+    selection-color: #18181b;
+}
+
+QMenu {
+    color: #27272a;
+    background-color: #ffffff;
+    border-color: #d4d4d8;
+}
+
+QMenu::item:selected {
+    background-color: #e4e4e7;
+}
+
+QToolTip {
+    color: #18181b;
+    background-color: #ffffff;
+    border-color: #d4d4d8;
+}
+
+QFrame#forumHeader {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e4e4e7;
+}
+
+QFrame#sidebarCard, QFrame#asideCard, QFrame#questionFeedCard,
+QFrame#discussionQuestionCard, QFrame#loginCard {
+    background-color: #ffffff;
+    border-color: #e4e4e7;
+}
+
+QLabel#asideTitle {
+    color: #27272a;
+}
+
+QPushButton#storyAvatar {
+    color: #27272a;
+    background-color: #f4f4f5;
+    border-color: #d4d4d8;
+}
+
+QPushButton#storyAvatar:hover {
+    background-color: #e4e4e7;
+    border-color: #a1a1aa;
+}
+
+QPushButton#storyAvatar:checked {
+    color: #ffffff;
+    background-color: #18181b;
+    border-color: #18181b;
+}
+
+QFrame#questionFeedCard:hover {
+    border-color: #a1a1aa;
+}
+
+QFrame#questionFeedCard[selected="true"] {
+    background-color: #f4f4f5;
+    border-color: #a1a1aa;
+}
+
+QLabel#feedAuthor {
+    color: #3f3f46;
+}
+
+QLabel#profileAvatar, QLabel#feedAvatar {
+    color: #27272a;
+    background-color: #e4e4e7;
+    border-color: #d4d4d8;
+}
+
+QLabel#feedExcerpt, QLabel#feedTags {
+    color: #52525b;
+}
+
+QPushButton#navButton, QPushButton#reportsNavButton {
+    color: #52525b;
+}
+
+QPushButton#navButton:hover, QPushButton#navButton:checked,
+QPushButton#reportsNavButton:hover {
+    color: #18181b;
+    background-color: #f4f4f5;
+}
+
+QLabel#pageLabel {
+    color: #52525b;
+}
+
+QWidget#discussionContent {
+    background-color: #f8fafc;
+}
+
+QPushButton#feedOpenButton, QPushButton#logoutButton {
+    color: #52525b;
+}
+
+QPushButton#feedOpenButton:hover, QPushButton#logoutButton:hover {
+    color: #18181b;
+    background-color: #f4f4f5;
+}
+
+QListWidget#popularQuestions::item,
+QListWidget#trendingTags::item {
+    border-bottom-color: #e4e4e7;
+}
+
+QListWidget#popularQuestions::item:selected,
+QListWidget#trendingTags::item:selected {
+    color: #18181b;
+    background-color: #e4e4e7;
+}
+
+QPushButton#linkButton {
+    color: #52525b;
+}
+
+QPushButton#linkButton:hover {
+    color: #18181b;
+}

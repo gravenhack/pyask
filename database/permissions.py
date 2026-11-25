@@ -1,3 +1,6 @@
+HIDDEN_CONTENT_MESSAGE = "Contenu masqué par la modération."
+
+
 def _require_role(cursor, user, roles, message):
     if user is None or user.role not in roles:
         raise PermissionError(message)
@@ -21,3 +24,15 @@ def require_moderator(cursor, moderator):
         ("moderator", "admin"),
         "Only a moderator or admin can perform this action.",
     )
+
+
+def can_view_hidden_content(connection, user):
+    if user is None or not user.is_moderator():
+        return False
+
+    cursor = connection.cursor()
+    try:
+        require_moderator(cursor, user)
+    finally:
+        cursor.close()
+    return True

@@ -17,6 +17,7 @@ classDiagram
         -role
         +hash_password(password)
         +check_password(password)
+        +verify_password(password, password_hash)
         +change_password(old_password, new_password)
         +change_role(new_role, by_user)
         +is_admin()
@@ -120,6 +121,9 @@ flowchart LR
     subgraph app[Application PYASK]
         register((Créer un compte))
         login((Se connecter))
+        profile((Modifier son profil))
+        password((Changer son mot de passe))
+        theme((Basculer clair/sombre))
         browse((Consulter les questions))
         filter((Rechercher, filtrer et trier))
         ask((Poser une question))
@@ -127,14 +131,17 @@ flowchart LR
         vote((Voter sur une réponse))
         comment((Commenter une question ou réponse))
         report((Signaler un contenu))
-        export((Exporter les rapports en CSV))
-        review((Traiter ou rejeter un signalement))
+        export((Exporter les rapports en CSV ou ZIP))
+        review((Masquer ou rejeter un signalement))
         manage_roles((Gérer les rôles utilisateurs))
         create_category((Créer une catégorie))
     end
 
     visitor --> register
     visitor --> login
+    member --> profile
+    member --> password
+    member --> theme
     member --> browse
     member --> filter
     member --> ask
@@ -142,12 +149,18 @@ flowchart LR
     member --> vote
     member --> comment
     member --> report
-    member --> export
+    admin --> export
     moderator --> review
     admin --> manage_roles
     admin --> create_category
 ```
 
 Les catégories ne peuvent pas être supprimées lorsqu'elles sont utilisées par
-des questions. Les signalements traités ne suppriment pas le contenu : le
-modérateur les marque comme traités ou les rejette.
+des questions. Traiter un signalement masque sa cible sans la supprimer et
+conserve la trace du modérateur, du motif et de la date. Les utilisateurs
+ordinaires voient un remplacement; les modérateurs et admins peuvent consulter
+le contenu original. Rejeter le signalement laisse le contenu visible.
+
+Le profil permet de modifier le nom d'utilisateur, le nom complet et la bio.
+Le changement de mot de passe exige le mot de passe actuel et la confirmation
+du nouveau. Le thème clair/sombre est mémorisé localement par l'application.

@@ -322,6 +322,11 @@ QPushButton#reportsNavButton:hover {
     background-color: #202226;
 }
 
+QLabel#pageLabel {
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
 QWidget#timelineContent, QWidget#storiesContent,
 QWidget#sidebarContent, QWidget#asideContent {
     background-color: transparent;

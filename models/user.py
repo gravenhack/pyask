@@ -67,13 +67,20 @@ class User:
         return self.__password_hash
 
     def check_password(self, password):
+        return User.verify_password(password, self.__password_hash)
+
+    @staticmethod
+    def verify_password(password, password_hash):
         try:
-            salt_hex, digest_hex = self.__password_hash.split("$")
+            salt_hex, digest_hex = password_hash.split("$")
             digest = hashlib.pbkdf2_hmac(
                 "sha256", password.encode(), bytes.fromhex(salt_hex), 100_000)
         except ValueError:
             return False
         return digest.hex() == digest_hex
+
+    def _set_password_hash(self, password_hash):
+        self.__password_hash = password_hash
 
     def change_password(self, old_password, new_password):
         if not self.check_password(old_password):

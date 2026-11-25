@@ -3,10 +3,12 @@ from .post import Post
 
 class Answer(Post):
     def __init__(self, author, body, question_id, votes=None,
-                 id=None, created_at=None, updated_at=None):
+                 id=None, created_at=None, updated_at=None,
+                 is_hidden=False):
         super().__init__(author, body, id, created_at)
         self.question_id = question_id
         self.updated_at = updated_at
+        self.is_hidden = is_hidden
         self.__votes = dict(votes or {})   # {id_utilisateur: +1 ou -1}
 
     def vote(self, user, value):

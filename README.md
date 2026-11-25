@@ -6,14 +6,19 @@ A desktop Question & Answer forum built with Python (OOP), PyQt5, and MySQL.
 
 - Register and log in; passwords are stored as salted hashes.
 - Log out and return to the sign-in screen with credentials cleared.
-- Update a profile's full name and bio from the forum.
-- Post questions with a category and up to three tags, and search, filter, and sort questions.
+- Update a profile's username, full name, and bio; change its password by
+  entering the current password and confirming the new one.
+- Switch between dark and light themes; the selected theme is remembered.
+- Post questions with a category and up to three tags, and search, filter, sort, and browse questions 20 at a time.
 - Answer questions, vote on answers, and comment on questions or answers.
 - Report questions, answers, and comments.
-- Let moderators review or dismiss pending reports.
+- Let moderators hide reported questions, answers, or comments without deleting
+  them; ordinary users see a placeholder while moderators/admins can inspect the
+  original. Dismissing a report leaves its target visible.
 - Let admins assign user roles and create categories.
 - Let admins export question and answer reports as separate CSV files from the
-  Reports section.
+  Reports section, filtered by period; both CSVs can also be exported together
+  in a ZIP archive.
 
 Admins can manage user roles and add categories from the administration
 screen. Categories cannot be deleted while questions use them. An admin
@@ -26,8 +31,9 @@ page layout: a profile/search/navigation sidebar, a category-story strip above
 the central question feed, and a right column for popular questions and tags.
 Opening a feed card shows its answers and discussion actions in a dedicated
 dialog. The supplied abstract wallpaper is used only on the login screen; the
-forum keeps its dark background. The layout and neutral card styling are
-implemented with Qt; no React components or kit files are copied into PYASK.
+forum starts in dark mode and offers a persistent light/dark theme toggle. The
+layout and neutral card styling are implemented with Qt; no React components
+or kit files are copied into PYASK.
 
 New accounts have the `user` role. To bootstrap the first administrator, first
 register the account, then connect to the database selected in `.env` and
@@ -46,7 +52,8 @@ The application prevents demoting the last administrator.
 - `models/`: domain objects and their business rules.
 - `database/`: MySQL connection, repositories, `schema.sql`, and the demo seed.
 - `ui/main_window.py`: current PyQt5 screens and interactions.
-- `ui/styles.qss`: Qt stylesheet; `ui/background.png` is the optimized login wallpaper.
+- `ui/styles.qss` and `ui/styles_light.qss`: dark theme and light-theme color
+  overrides; `ui/background.png` is the optimized login wallpaper.
 - `ui/fonts/`: bundled Agrave Pro font files and their SIL Open Font License.
 - `reporting/`: CSV export.
 - `exports/`: default destination for CSV reports; generated files are ignored by Git.
@@ -80,6 +87,15 @@ application; it does not change the target in `database/schema.sql`.
 and recreating `pyask_db`. Do not run it against a database containing data
 you need to keep.
 
+The additive moderation migration is in
+[`database/migrations/001_hidden_content.sql`](./database/migrations/001_hidden_content.sql).
+It creates the audit table and its target-integrity triggers without dropping
+or changing existing content. It is not applied automatically; back up the
+target database and confirm its name before running it. Do not execute
+`database/schema.sql` as a substitute for this migration on an existing database.
+The moderation features require this migration to be applied before launching
+the updated application.
+
 Keep real credentials only in the ignored `.env`.
 
 ## Seed validation data
@@ -108,6 +124,13 @@ Run the unit tests with:
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
+```
+
+The optional integration tests perform read-only checks and only run against
+`pyask_validation_20261124`:
+
+```bash
+PYASK_RUN_DB_INTEGRATION_TESTS=1 .venv/bin/python -m unittest discover -s tests -p 'test_validation_database_integration.py' -v
 ```
 
 See [DIAGRAMMES.md](./DIAGRAMMES.md) for the class and use-case diagrams.

@@ -16,7 +16,16 @@ class EmptyQuestionRepository:
     def list_categories(self):
         return []
 
+    def count_questions(self, **_filters):
+        return 0
+
     def list_questions(self, **_filters):
+        return []
+
+    def list_popular_questions(self, **_filters):
+        return []
+
+    def list_trending_tags(self, **_filters):
         return []
 
 

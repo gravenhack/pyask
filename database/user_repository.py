@@ -93,22 +93,67 @@ class UserRepository:
             cursor.close()
             connection.close()
 
-    def update_profile(self, user_id, full_name=None, bio=None):
+    def update_profile(
+        self,
+        user_id,
+        full_name=None,
+        bio=None,
+        username=None,
+        current_password=None,
+        new_password=None,
+    ):
         if user_id is None:
             raise ValueError("The user must be saved before updating a profile.")
+        if (current_password is None) != (new_password is None):
+            raise ValueError(
+                "Both the current and new passwords are required."
+            )
+        if username is not None:
+            username = username.strip()
+            if not username:
+                raise ValueError("The username is required.")
+            if len(username) > 50:
+                raise ValueError("The username cannot exceed 50 characters.")
 
         connection = get_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
-            if cursor.fetchone() is None:
+            cursor.execute(
+                "SELECT username, password_hash FROM users WHERE id = %s",
+                (user_id,),
+            )
+            account = cursor.fetchone()
+            if account is None:
                 raise LookupError(f"User {user_id} was not found.")
 
+            current_username, stored_password_hash = account
+            username = username if username is not None else current_username
             cursor.execute(
-                "UPDATE users SET full_name = %s, bio = %s WHERE id = %s",
-                (full_name, bio, user_id),
+                "SELECT 1 FROM users WHERE username = %s AND id <> %s",
+                (username, user_id),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("This username is already in use.")
+
+            assignments = ["username = %s", "full_name = %s", "bio = %s"]
+            values = [username, full_name, bio]
+            new_password_hash = None
+            if new_password is not None:
+                if not User.verify_password(
+                    current_password,
+                    stored_password_hash,
+                ):
+                    raise PermissionError("The current password is incorrect.")
+                new_password_hash = User.hash_password(new_password)
+                assignments.append("password_hash = %s")
+                values.append(new_password_hash)
+
+            cursor.execute(
+                f"UPDATE users SET {', '.join(assignments)} WHERE id = %s",
+                (*values, user_id),
             )
             connection.commit()
+            return new_password_hash
         except mysql.connector.Error:
             connection.rollback()
             raise
