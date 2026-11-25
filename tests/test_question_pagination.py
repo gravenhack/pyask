@@ -75,7 +75,11 @@ class QuestionPaginationTests(unittest.TestCase):
         for sort, expected_order in (
             ("recent", "qs.created_at > target.created_at"),
             ("most_answered", "qs.answer_count > target.answer_count"),
-            ("most_voted", "qs.vote_score > target.vote_score"),
+            (
+                "most_voted",
+                "COALESCE(qvc.like_count, 0) + "
+                "COALESCE(qvc.dislike_count, 0) >",
+            ),
         ):
             with self.subTest(sort=sort):
                 connection = Mock()
@@ -106,7 +110,7 @@ class QuestionPaginationTests(unittest.TestCase):
         connection.cursor.return_value = cursor
         cursor.fetchall.side_effect = [
             [{"question_id": 3, "title": "Popular", "answer_count": 4,
-              "vote_score": 8}],
+              "like_count": 6, "dislike_count": 2}],
             [{"tag_name": "python", "question_count": 6}],
         ]
 
@@ -118,8 +122,13 @@ class QuestionPaginationTests(unittest.TestCase):
             trending = self.repository.list_trending_tags(category_id=8)
 
         self.assertEqual(popular[0]["question_id"], 3)
+        self.assertEqual(popular[0]["like_count"], 6)
+        self.assertEqual(popular[0]["dislike_count"], 2)
         self.assertEqual(trending[0]["question_count"], 6)
-        self.assertIn("ORDER BY", cursor.execute.call_args_list[0].args[0])
+        popular_query = cursor.execute.call_args_list[0].args[0]
+        self.assertIn("ORDER BY", popular_query)
+        self.assertIn("COALESCE(qvc.like_count, 0)", popular_query)
+        self.assertNotIn("vote_score", popular_query)
         self.assertIn("COUNT(DISTINCT qs.question_id)", cursor.execute.call_args_list[1].args[0])
         self.assertEqual(
             [call.args[1] for call in cursor.execute.call_args_list],

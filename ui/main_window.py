@@ -717,7 +717,10 @@ class ReportsDialog(QDialog):
         answers_group = QGroupBox("Réponses")
         answers_layout = QVBoxLayout(answers_group)
         answers_layout.addWidget(
-            QLabel("Réponses, auteur, question associée et score des votes.")
+            QLabel(
+                "Réponses, auteur, question associée et nombres de j'aime/"
+                "je n'aime pas."
+            )
         )
         answers_layout.addWidget(self.answers_export_button)
 
@@ -894,7 +897,8 @@ class QuestionFeedCard(QFrame):
         tags.setObjectName("feedTags")
         stats = QLabel(
             f"{question.answer_count} réponse(s)  ·  "
-            f"Score {question.vote_score}"
+            f"J'aime {question.like_count}  ·  "
+            f"Je n'aime pas {question.dislike_count}"
         )
         stats.setObjectName("feedStats")
         open_button = QPushButton("Répondre")
@@ -1072,9 +1076,9 @@ class ForumWindow(QMainWindow):
         self.answer_button = QPushButton("Répondre")
         self.answer_button.setObjectName("primaryButton")
         self.answer_button.clicked.connect(self._create_answer)
-        self.upvote_button = QPushButton("Voter +1")
+        self.upvote_button = QPushButton("J'aime")
         self.upvote_button.clicked.connect(lambda: self._vote(1))
-        self.downvote_button = QPushButton("Voter -1")
+        self.downvote_button = QPushButton("Je n'aime pas")
         self.downvote_button.clicked.connect(lambda: self._vote(-1))
         self.comment_button = QPushButton("Commenter")
         self.comment_button.clicked.connect(self._create_comment)
@@ -1710,7 +1714,8 @@ class ForumWindow(QMainWindow):
             popular_item = QListWidgetItem(
                 f"{question['title']}\n"
                 f"{question['answer_count']} réponse(s) · "
-                f"score {question['vote_score']}"
+                f"J'aime {question['like_count']} · "
+                f"Je n'aime pas {question['dislike_count']}"
             )
             popular_item.setData(Qt.UserRole, question["question_id"])
             self.popular_questions.addItem(popular_item)
@@ -1811,7 +1816,9 @@ class ForumWindow(QMainWindow):
         self.question_title.setText(question.title)
         self.question_meta.setText(
             f"{question.category.name} · {question.author.username} · "
-            f"{question.answer_count} réponse(s) · score {question.vote_score}"
+            f"{question.answer_count} réponse(s) · "
+            f"J'aime {question.like_count} · "
+            f"Je n'aime pas {question.dislike_count}"
         )
         self.question_body.setPlainText(question.body)
         self.question_tags.setText(
@@ -1860,7 +1867,9 @@ class ForumWindow(QMainWindow):
             answer_item = QTreeWidgetItem(
                 self.answer_tree,
                 [
-                    f"{answer.author.username} · score {answer.score}\n"
+                    f"{answer.author.username} · "
+                    f"J'aime {answer.like_count} · "
+                    f"Je n'aime pas {answer.dislike_count}\n"
                     f"{answer.body}"
                 ],
             )

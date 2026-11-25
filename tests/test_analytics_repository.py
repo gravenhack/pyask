@@ -68,6 +68,10 @@ class AnalyticsRepositoryTests(unittest.TestCase):
                     (admin.id,),
                 )
                 report_cursor.execute.assert_called_once()
+                query = report_cursor.execute.call_args.args[0]
+                self.assertIn("AS like_count", query)
+                self.assertIn("AS dislike_count", query)
+                self.assertNotIn("vote_score", query)
                 permission_cursor.close.assert_called_once()
                 report_cursor.close.assert_called_once()
                 connection.close.assert_called_once()

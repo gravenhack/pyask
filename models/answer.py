@@ -20,12 +20,19 @@ class Answer(Post):
         self.__votes[user.id] = value
 
     @property
-    def score(self):
-        return sum(self.__votes.values())
+    def like_count(self):
+        return sum(value == 1 for value in self.__votes.values())
+
+    @property
+    def dislike_count(self):
+        return sum(value == -1 for value in self.__votes.values())
 
     @property
     def votes(self):
         return dict(self.__votes)
 
     def __str__(self):
-        return f"{super().__str__()} (score {self.score})"
+        return (
+            f"{super().__str__()} "
+            f"(likes {self.like_count}, dislikes {self.dislike_count})"
+        )

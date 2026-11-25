@@ -122,11 +122,13 @@ class QuestionTests(unittest.TestCase):
             "Body",
             self.category,
             answer_count=3,
-            vote_score=5,
+            like_count=5,
+            dislike_count=2,
         )
 
         self.assertEqual(question.answer_count, 3)
-        self.assertEqual(question.vote_score, 5)
+        self.assertEqual(question.like_count, 5)
+        self.assertEqual(question.dislike_count, 2)
 
 
 class AnswerTests(unittest.TestCase):
@@ -137,8 +139,18 @@ class AnswerTests(unittest.TestCase):
         answer.vote(voter, 1)
         answer.vote(voter, -1)
 
-        self.assertEqual(answer.score, -1)
+        self.assertEqual(answer.like_count, 0)
+        self.assertEqual(answer.dislike_count, 1)
         self.assertEqual(answer.votes, {voter.id: -1})
+
+    def test_counts_likes_and_dislikes_separately(self):
+        answer = Answer(make_user(), "Answer", question_id=1)
+
+        answer.vote(make_user("alice", user_id=2), 1)
+        answer.vote(make_user("bob", user_id=3), -1)
+
+        self.assertEqual(answer.like_count, 1)
+        self.assertEqual(answer.dislike_count, 1)
 
     def test_rejects_vote_values_other_than_plus_or_minus_one(self):
         answer = Answer(make_user(), "Answer", question_id=1)

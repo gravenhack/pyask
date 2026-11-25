@@ -12,13 +12,31 @@ from models.tag import Tag
 from models.user_summary import UserSummary
 
 
+QUESTION_VOTE_COUNTS_QUERY = """
+    SELECT
+        a.question_id,
+        SUM(CASE WHEN av.vote_value = 1 THEN 1 ELSE 0 END) AS like_count,
+        SUM(CASE WHEN av.vote_value = -1 THEN 1 ELSE 0 END) AS dislike_count
+    FROM answers a
+    JOIN answer_votes av ON av.answer_id = a.id
+    GROUP BY a.question_id
+"""
+QUESTION_TOTAL_VOTES = (
+    "COALESCE(qvc.like_count, 0) + COALESCE(qvc.dislike_count, 0)"
+)
+TARGET_QUESTION_TOTAL_VOTES = (
+    "COALESCE(target_qvc.like_count, 0) "
+    "+ COALESCE(target_qvc.dislike_count, 0)"
+)
+
 QUESTION_SORT_OPTIONS = {
     "recent": "qs.created_at DESC, qs.question_id DESC",
     "most_answered": (
         "qs.answer_count DESC, qs.created_at DESC, qs.question_id DESC"
     ),
     "most_voted": (
-        "qs.vote_score DESC, qs.created_at DESC, qs.question_id DESC"
+        f"{QUESTION_TOTAL_VOTES} DESC, "
+        "qs.created_at DESC, qs.question_id DESC"
     ),
 }
 
@@ -143,13 +161,16 @@ class QuestionRepository:
                         ELSE qs.title
                     END AS title,
                     qs.answer_count,
-                    qs.vote_score
+                    COALESCE(qvc.like_count, 0) AS like_count,
+                    COALESCE(qvc.dislike_count, 0) AS dislike_count
                 FROM question_statistics qs
+                LEFT JOIN ({QUESTION_VOTE_COUNTS_QUERY}) qvc
+                    ON qvc.question_id = qs.question_id
                 LEFT JOIN hidden_content hc ON hc.question_id = qs.question_id
                 {where_clause}
                 ORDER BY
                     qs.answer_count DESC,
-                    qs.vote_score DESC,
+                    {QUESTION_TOTAL_VOTES} DESC,
                     qs.created_at DESC,
                     qs.question_id DESC
                 LIMIT %s
@@ -223,9 +244,9 @@ class QuestionRepository:
                 )
             """,
             "most_voted": """
-                qs.vote_score > target.vote_score
+                {QUESTION_TOTAL_VOTES} > {TARGET_QUESTION_TOTAL_VOTES}
                 OR (
-                    qs.vote_score = target.vote_score
+                    {QUESTION_TOTAL_VOTES} = {TARGET_QUESTION_TOTAL_VOTES}
                     AND (
                         qs.created_at > target.created_at
                         OR (
@@ -250,6 +271,10 @@ class QuestionRepository:
             )
         else:
             where_clause = f"WHERE ({preceding_rows[sort]})"
+        where_clause = where_clause.format(
+            QUESTION_TOTAL_VOTES=QUESTION_TOTAL_VOTES,
+            TARGET_QUESTION_TOTAL_VOTES=TARGET_QUESTION_TOTAL_VOTES,
+        )
 
         connection = get_connection()
         cursor = connection.cursor()
@@ -260,6 +285,10 @@ class QuestionRepository:
                 FROM question_statistics qs
                 JOIN question_statistics target
                     ON target.question_id = %s
+                LEFT JOIN ({QUESTION_VOTE_COUNTS_QUERY}) qvc
+                    ON qvc.question_id = qs.question_id
+                LEFT JOIN ({QUESTION_VOTE_COUNTS_QUERY}) target_qvc
+                    ON target_qvc.question_id = target.question_id
                 {where_clause}
                 """,
                 (question_id, *parameters),
@@ -302,7 +331,8 @@ class QuestionRepository:
                     qs.created_at,
                     qs.updated_at,
                     qs.answer_count,
-                    qs.vote_score,
+                    COALESCE(qvc.like_count, 0) AS like_count,
+                    COALESCE(qvc.dislike_count, 0) AS dislike_count,
                     qs.author_id,
                     qs.author_username,
                     qs.author_role,
@@ -316,12 +346,16 @@ class QuestionRepository:
                 FROM (
                     SELECT qs.question_id
                     FROM question_statistics qs
+                    LEFT JOIN ({QUESTION_VOTE_COUNTS_QUERY}) qvc
+                        ON qvc.question_id = qs.question_id
                     {where_clause}
                     ORDER BY {QUESTION_SORT_OPTIONS[sort]}
                     LIMIT %s OFFSET %s
                 ) page
                 JOIN question_statistics qs
                     ON qs.question_id = page.question_id
+                LEFT JOIN ({QUESTION_VOTE_COUNTS_QUERY}) qvc
+                    ON qvc.question_id = qs.question_id
                 LEFT JOIN hidden_content hc ON hc.question_id = qs.question_id
                 LEFT JOIN question_tags qt ON qt.question_id = qs.question_id
                 LEFT JOIN tags t ON t.id = qt.tag_id
@@ -359,7 +393,8 @@ class QuestionRepository:
                         created_at=record["created_at"],
                         updated_at=record["updated_at"],
                         answer_count=record["answer_count"],
-                        vote_score=record["vote_score"],
+                        like_count=record["like_count"],
+                        dislike_count=record["dislike_count"],
                         is_hidden=record["hidden_id"] is not None,
                     )
                 if record["tag_id"] is not None:

@@ -10,7 +10,8 @@ QUESTION_REPORT_FIELDS = (
     "tags",
     "created_at",
     "answer_count",
-    "vote_score",
+    "like_count",
+    "dislike_count",
 )
 
 ANSWER_REPORT_FIELDS = (
@@ -20,7 +21,8 @@ ANSWER_REPORT_FIELDS = (
     "author",
     "body",
     "created_at",
-    "vote_score",
+    "like_count",
+    "dislike_count",
 )
 
 
@@ -41,23 +43,35 @@ class AnalyticsRepository:
         )
 
     def question_report(self, admin, period_days=None):
-        period_filter = self._period_filter("created_at", period_days)
+        period_filter = self._period_filter("qs.created_at", period_days)
         return self._report_rows(
             admin,
             f"""
             SELECT
-                question_id,
-                title,
-                body,
-                author_username AS author,
-                category_name AS category,
-                tags,
-                created_at,
-                answer_count,
-                vote_score
-            FROM question_statistics
+                qs.question_id,
+                qs.title,
+                qs.body,
+                qs.author_username AS author,
+                qs.category_name AS category,
+                qs.tags,
+                qs.created_at,
+                qs.answer_count,
+                COALESCE(qvc.like_count, 0) AS like_count,
+                COALESCE(qvc.dislike_count, 0) AS dislike_count
+            FROM question_statistics qs
+            LEFT JOIN (
+                SELECT
+                    a.question_id,
+                    SUM(CASE WHEN v.vote_value = 1 THEN 1 ELSE 0 END)
+                        AS like_count,
+                    SUM(CASE WHEN v.vote_value = -1 THEN 1 ELSE 0 END)
+                        AS dislike_count
+                FROM answers a
+                JOIN answer_votes v ON v.answer_id = a.id
+                GROUP BY a.question_id
+            ) qvc ON qvc.question_id = qs.question_id
             {period_filter}
-            ORDER BY created_at DESC, question_id DESC
+            ORDER BY qs.created_at DESC, qs.question_id DESC
             """,
         )
 
@@ -74,10 +88,15 @@ class AnalyticsRepository:
                 a.body,
                 a.created_at,
                 (
-                    SELECT COALESCE(SUM(v.vote_value), 0)
+                    SELECT COUNT(*)
                     FROM answer_votes v
-                    WHERE v.answer_id = a.id
-                ) AS vote_score
+                    WHERE v.answer_id = a.id AND v.vote_value = 1
+                ) AS like_count,
+                (
+                    SELECT COUNT(*)
+                    FROM answer_votes v
+                    WHERE v.answer_id = a.id AND v.vote_value = -1
+                ) AS dislike_count
             FROM answers a
             JOIN questions q ON q.id = a.question_id
             JOIN users u ON u.id = a.user_id

@@ -217,13 +217,7 @@ SELECT
         SELECT COUNT(*)
         FROM answers a
         WHERE a.question_id = q.id
-    ) AS answer_count,
-    (
-        SELECT COALESCE(SUM(v.vote_value), 0)
-        FROM answers a
-        JOIN answer_votes v ON v.answer_id = a.id
-        WHERE a.question_id = q.id
-    ) AS vote_score
+    ) AS answer_count
 FROM questions q
 JOIN users u ON u.id = q.user_id
 JOIN categories c ON c.id = q.category_id;

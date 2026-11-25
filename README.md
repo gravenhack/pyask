@@ -10,7 +10,9 @@ A desktop Question & Answer forum built with Python (OOP), PyQt5, and MySQL.
   entering the current password and confirming the new one.
 - Switch between dark and light themes; the selected theme is remembered.
 - Post questions with a category and up to three tags, and search, filter, sort, and browse questions 20 at a time.
-- Answer questions, vote on answers, and comment on questions or answers.
+- Answer questions, like or dislike answers, and comment on questions or
+  answers. Question cards and answer reports show separate like/dislike counts;
+  "most voted" sorts by total votes.
 - Report questions, answers, and comments.
 - Let moderators hide reported questions, answers, or comments without deleting
   them; ordinary users see a placeholder while moderators/admins can inspect the
