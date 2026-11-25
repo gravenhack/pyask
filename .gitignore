@@ -208,6 +208,10 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Generated CSV reports
+exports/*.csv
+!exports/.gitkeep
+
 # Ruff stuff:
 .ruff_cache/
 

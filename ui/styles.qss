@@ -1,0 +1,404 @@
+QWidget {
+    color: #e4e4e7;
+    font-family: "Agrave Pro";
+    font-size: 13px;
+    background-color: transparent;
+}
+
+QMainWindow, QDialog {
+    background-color: #0c0d0f;
+}
+
+QWidget#loginWindow {
+    border-image: url("APP_BACKGROUND_URL") 0 0 0 0 stretch stretch;
+}
+
+QGroupBox {
+    background-color: #111214;
+    border: 1px solid #282a2d;
+    border-radius: 0px;
+    margin-top: 10px;
+    padding: 12px 10px 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 5px;
+    background-color: #111214;
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
+QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTreeWidget {
+    color: #e4e4e7;
+    background-color: #121315;
+    border: 1px solid #2a2b2f;
+    border-radius: 0px;
+    padding: 7px;
+    selection-background-color: #35373c;
+    selection-color: #f4f4f5;
+}
+
+QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {
+    border: 1px solid #777982;
+}
+
+QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled {
+    color: #71717a;
+    background-color: #101113;
+}
+
+QPlainTextEdit#questionContent {
+    background-color: #101113;
+    border: 0;
+}
+
+QPushButton {
+    color: #d4d4d8;
+    background-color: #151619;
+    border: 1px solid #2a2b2f;
+    border-radius: 0px;
+    padding: 8px 11px;
+}
+
+QPushButton:hover {
+    background-color: #202226;
+    border-color: #41434a;
+}
+
+QPushButton:pressed {
+    background-color: #292b30;
+}
+
+QPushButton:disabled {
+    color: #686a72;
+    background-color: #111214;
+    border-color: #232428;
+}
+
+QPushButton#primaryButton, QPushButton#loginPrimaryButton {
+    color: #111214;
+    background-color: #e4e4e7;
+    border: 1px solid #e4e4e7;
+    border-radius: 0px;
+    font-weight: 600;
+}
+
+QPushButton#primaryButton:hover, QPushButton#loginPrimaryButton:hover {
+    background-color: #ffffff;
+    border-color: #ffffff;
+}
+
+QPushButton#primaryButton:disabled, QPushButton#loginPrimaryButton:disabled {
+    color: #777982;
+    background-color: #25262a;
+    border-color: #25262a;
+}
+
+QLabel#questionTitle {
+    color: #f4f4f5;
+    font-size: 19px;
+    font-weight: 650;
+}
+
+QLabel#questionMeta, QLabel#emptyState, QLabel#feedCount {
+    color: #858791;
+}
+
+QLabel#questionTags {
+    color: #b4b5bc;
+    font-weight: 600;
+}
+
+QListWidget::item {
+    border-radius: 0px;
+    padding: 8px;
+    margin: 2px;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected {
+    color: #f4f4f5;
+    background-color: #292b30;
+}
+
+QTreeWidget::item {
+    border-radius: 0px;
+    padding: 7px;
+}
+
+QSplitter::handle {
+    background-color: #202226;
+    width: 1px;
+}
+
+QScrollArea,
+QScrollArea#sidebarScroll,
+QScrollArea#asideScroll,
+QScrollArea#feedScroll,
+QScrollArea#storiesScroll,
+QScrollArea#discussionScroll {
+    background-color: transparent;
+    border: 0;
+}
+
+QScrollBar:vertical, QScrollBar:horizontal {
+    background-color: #0c0d0f;
+    border: 0;
+    margin: 0;
+}
+
+QScrollBar:vertical {
+    width: 9px;
+}
+
+QScrollBar:horizontal {
+    height: 9px;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background-color: #3a3c42;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background-color: #555861;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+}
+
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: transparent;
+}
+
+QComboBox::drop-down {
+    border: 0;
+    width: 20px;
+}
+
+QComboBox QAbstractItemView {
+    color: #e4e4e7;
+    background-color: #151619;
+    border: 1px solid #2a2b2f;
+    selection-background-color: #292b30;
+    selection-color: #f4f4f5;
+}
+
+QMenu {
+    color: #e4e4e7;
+    background-color: #151619;
+    border: 1px solid #2a2b2f;
+}
+
+QMenu::item:selected {
+    background-color: #292b30;
+}
+
+QToolTip {
+    color: #f4f4f5;
+    background-color: #1b1c20;
+    border: 1px solid #35373c;
+    padding: 4px;
+}
+
+QFrame#forumHeader {
+    background-color: #0c0d0f;
+    border-bottom: 1px solid #282a2d;
+}
+
+QLabel#forumLogo {
+    color: #f4f4f5;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+QFrame#sidebarCard, QFrame#asideCard, QFrame#questionFeedCard,
+QFrame#discussionQuestionCard, QFrame#loginCard {
+    background-color: #111214;
+    border: 1px solid #282a2d;
+    border-radius: 0px;
+}
+
+QLabel#sidebarSectionTitle {
+    color: #858791;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+QLabel#filterFieldLabel {
+    color: #858791;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+QLabel#asideTitle {
+    color: #e4e4e7;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+QLabel#storyLabel, QLabel#profileRole {
+    color: #858791;
+    font-size: 11px;
+}
+
+QPushButton#storyAvatar {
+    color: #d4d4d8;
+    background-color: #151619;
+    border: 1px solid #35373c;
+    border-radius: 0px;
+    font-weight: 600;
+    padding: 0;
+}
+
+QPushButton#storyAvatar:hover {
+    background-color: #202226;
+    border-color: #777982;
+}
+
+QPushButton#storyAvatar:checked {
+    color: #111214;
+    background-color: #e4e4e7;
+    border-color: #e4e4e7;
+}
+
+QFrame#questionFeedCard:hover {
+    border-color: #555861;
+}
+
+QFrame#questionFeedCard[selected="true"] {
+    background-color: #18191c;
+    border-color: #555861;
+}
+
+QLabel#feedCardTitle {
+    color: #f4f4f5;
+    font-size: 15px;
+    font-weight: 650;
+}
+
+QLabel#feedAuthor {
+    color: #d4d4d8;
+    font-weight: 600;
+}
+
+QLabel#profileAvatar, QLabel#feedAvatar {
+    color: #e4e4e7;
+    background-color: #25262a;
+    border: 1px solid #35373c;
+    border-radius: 0px;
+    font-weight: 700;
+}
+
+QLabel#feedMeta, QLabel#feedStats {
+    color: #858791;
+    font-size: 11px;
+}
+
+QLabel#feedExcerpt, QLabel#feedTags {
+    color: #a1a1aa;
+}
+
+QLabel#feedTags {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QPushButton#navButton, QPushButton#reportsNavButton {
+    text-align: left;
+    color: #a1a1aa;
+    background-color: transparent;
+    border: 0;
+    padding: 8px;
+}
+
+QPushButton#navButton:hover, QPushButton#navButton:checked,
+QPushButton#reportsNavButton:hover {
+    color: #f4f4f5;
+    background-color: #202226;
+}
+
+QWidget#timelineContent, QWidget#storiesContent,
+QWidget#sidebarContent, QWidget#asideContent {
+    background-color: transparent;
+}
+
+QWidget#discussionContent {
+    background-color: #0c0d0f;
+}
+
+QPushButton#feedOpenButton, QPushButton#logoutButton {
+    color: #a1a1aa;
+    background-color: transparent;
+    border: 0;
+    font-weight: 600;
+}
+
+QPushButton#feedOpenButton:hover, QPushButton#logoutButton:hover {
+    color: #f4f4f5;
+    background-color: #202226;
+}
+
+QListWidget#questionFeed,
+QListWidget#popularQuestions,
+QListWidget#trendingTags {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+}
+
+QListWidget#questionFeed::item {
+    background-color: transparent;
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+QListWidget#questionFeed::item:selected {
+    background-color: transparent;
+    color: #f4f4f5;
+}
+
+QListWidget#popularQuestions::item,
+QListWidget#trendingTags::item {
+    background-color: transparent;
+    border-bottom: 1px solid #202226;
+    padding: 9px 4px;
+}
+
+QListWidget#popularQuestions::item:selected,
+QListWidget#trendingTags::item:selected {
+    color: #f4f4f5;
+    background-color: #292b30;
+}
+
+QLabel#brandTitle {
+    color: #f4f4f5;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+QLabel#brandSubtitle, QLabel#loginHint {
+    color: #858791;
+}
+
+QLabel#loginTitle {
+    color: #f4f4f5;
+    font-size: 20px;
+    font-weight: 650;
+}
+
+QPushButton#linkButton {
+    color: #c4c5cb;
+    background-color: transparent;
+    border: 0;
+    font-weight: 600;
+}
+
+QPushButton#linkButton:hover {
+    color: #ffffff;
+}
