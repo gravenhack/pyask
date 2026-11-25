@@ -89,14 +89,9 @@ application; it does not change the target in `database/schema.sql`.
 and recreating `pyask_db`. Do not run it against a database containing data
 you need to keep.
 
-The additive moderation migration is in
-[`database/migrations/001_hidden_content.sql`](./database/migrations/001_hidden_content.sql).
-It creates the audit table and its target-integrity triggers without dropping
-or changing existing content. It is not applied automatically; back up the
-target database and confirm its name before running it. Do not execute
-`database/schema.sql` as a substitute for this migration on an existing database.
-The moderation features require this migration to be applied before launching
-the updated application.
+For a fresh installation, `database/schema.sql` creates the full database,
+including the moderation audit table and its integrity triggers. There is no
+separate migration step.
 
 Keep real credentials only in the ignored `.env`.
 
