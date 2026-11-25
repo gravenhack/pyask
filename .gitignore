@@ -211,6 +211,7 @@ tempCodeRunnerFile.py
 # Generated CSV reports
 exports/*.csv
 !exports/.gitkeep
+GUIDE_PROJET.md
 
 # Ruff stuff:
 .ruff_cache/
