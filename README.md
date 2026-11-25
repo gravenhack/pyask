@@ -52,7 +52,6 @@ The application prevents demoting the last administrator.
 - `exports/`: default destination for CSV reports; generated files are ignored by Git.
 - `tests/`: unit and UI tests.
 - `DIAGRAMMES.md`: class and use-case diagrams.
-- `PYASK_DECISIONS.md`: project decisions and progress notes.
 
 This is a progressive reorganization: the UI remains in one module for now,
 and existing repositories continue to handle database access. This avoids
