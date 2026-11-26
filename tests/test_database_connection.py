@@ -9,8 +9,8 @@ class DatabaseConnectionTests(unittest.TestCase):
     def test_requires_database_user_and_password(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(
-                RuntimeError,
-                "PYASK_DB_USER, PYASK_DB_PASSWORD",
+                ValueError,
+                "PYASK_DB_USER and PYASK_DB_PASSWORD",
             ):
                 get_connection()
 
